@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+torch
+torchvision
+mlflow
+dvc
+pytest
+requests
+Pillow
+numpy
+scikit-learn
