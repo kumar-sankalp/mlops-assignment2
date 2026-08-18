@@ -9,3 +9,5 @@ requests
 Pillow
 numpy
 scikit-learn
+kaggle
+streamlit
