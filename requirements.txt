@@ -11,3 +11,5 @@ numpy
 scikit-learn
 kaggle
 streamlit
+python-multipart
+httpx
