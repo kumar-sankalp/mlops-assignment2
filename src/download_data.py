@@ -3,7 +3,7 @@ import subprocess
 import sys
 import shutil
 
-def download_kaggle_dataset(dataset_name="salader/dogs-vs-cats", download_path="data/raw"):
+def download_kaggle_dataset(dataset_name="salader/dogsvscats", download_path="data/raw"):
     """
     Downloads and extracts a Kaggle dataset using the Kaggle API.
     Requires ~/.kaggle/kaggle.json to be set up.
