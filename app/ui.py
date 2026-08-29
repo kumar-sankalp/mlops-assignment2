@@ -99,42 +99,45 @@ with tab2:
     st.write("Simulates a batch of requests with known labels to calculate live model accuracy.")
     
     if st.button("Run Performance Benchmark"):
-        with st.spinner("Processing batch..."):
-            def generate_dummy(color):
-                img = Image.new('RGB', (224, 224), color=color)
-                img_byte_arr = io.BytesIO()
-                img.save(img_byte_arr, format='JPEG')
-                return img_byte_arr.getvalue()
-                
+        with st.spinner("Processing batch of real images..."):
             simulated_batch = [
-                (generate_dummy('red'), 'Cat'),
-                (generate_dummy('blue'), 'Dog'),
-                (generate_dummy('green'), 'Cat'),
-                (generate_dummy('yellow'), 'Dog'),
+                ("app/assets/cat1.jpg", "Cat"),
+                ("app/assets/dog1.jpg", "Dog"),
+                ("app/assets/cat2.jpg", "Cat"),
+                ("app/assets/dog2.jpg", "Dog"),
             ]
             
             results = []
             correct_predictions = 0
             
-            for i, (img_bytes, true_label) in enumerate(simulated_batch):
-                files = {'file': (f'dummy_{i}.jpg', img_bytes, 'image/jpeg')}
-                start_t = time.time()
-                resp = requests.post(f"{API_URL}/predict", files=files)
-                latency = (time.time() - start_t) * 1000
-                
-                if resp.status_code == 200:
-                    pred = resp.json()['prediction']
-                    is_correct = (pred == true_label)
-                    if is_correct: correct_predictions += 1
+            for i, (img_path, true_label) in enumerate(simulated_batch):
+                try:
+                    with open(img_path, "rb") as f:
+                        img_bytes = f.read()
                     
-                    results.append({
-                        "Request": f"Image {i+1}",
-                        "True Label": true_label,
-                        "Prediction": pred,
-                        "Correct?": "✅" if is_correct else "❌",
-                        "Latency (ms)": f"{latency:.2f}"
-                    })
+                    files = {'file': (os.path.basename(img_path), img_bytes, 'image/jpeg')}
+                    start_t = time.time()
+                    resp = requests.post(f"{API_URL}/predict", files=files)
+                    latency = (time.time() - start_t) * 1000
+                    
+                    if resp.status_code == 200:
+                        pred = resp.json()['prediction']
+                        is_correct = (pred == true_label)
+                        if is_correct: correct_predictions += 1
+                        
+                        results.append({
+                            "Request": f"Image {i+1}",
+                            "True Label": true_label,
+                            "Prediction": pred,
+                            "Correct?": "✅" if is_correct else "❌",
+                            "Latency (ms)": f"{latency:.2f}"
+                        })
+                    else:
+                        st.error(f"Failed to predict {img_path}")
+                except Exception as e:
+                    st.error(f"Error processing {img_path}: {e}")
             
-            st.table(results)
-            accuracy = (correct_predictions / len(simulated_batch)) * 100
-            st.metric("Model Accuracy (Batch)", f"{accuracy:.2f}%")
+            if results:
+                st.table(results)
+                accuracy = (correct_predictions / len(simulated_batch)) * 100
+                st.metric("Model Accuracy (Batch)", f"{accuracy:.2f}%")
