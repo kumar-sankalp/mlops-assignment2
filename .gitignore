@@ -170,3 +170,6 @@ model.pt
 
 # Mac OS
 .DS_Store
+
+# GitHub Actions Runner
+actions-runner/

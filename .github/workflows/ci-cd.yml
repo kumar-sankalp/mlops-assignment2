@@ -7,9 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  test-and-build:
+  build-and-push:
     runs-on: ubuntu-latest
-    
     steps:
     - uses: actions/checkout@v3
     
@@ -44,25 +43,40 @@ jobs:
     - name: Push Docker image
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       run: |
+        docker tag mlops-inference:latest ${{ secrets.DOCKERHUB_USERNAME }}/catdog:${{ github.sha }}
         docker tag mlops-inference:latest ${{ secrets.DOCKERHUB_USERNAME }}/catdog:latest
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/catdog:${{ github.sha }}
         docker push ${{ secrets.DOCKERHUB_USERNAME }}/catdog:latest
 
-    - name: Setup Minikube
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: medyagh/setup-minikube@latest
-      
-    - name: Deploy to Minikube
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  deploy-to-local:
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+
+    - name: Install Test Dependencies
+      run: pip install requests pillow
+
+    - name: Deploy API and Streamlit to Minikube
       run: |
-        sed -i "s|image: kumarsankalp/catdog:latest|image: ${{ secrets.DOCKERHUB_USERNAME }}/catdog:latest|g" k8s/deployment.yaml
+        sed -i '' -e "s|image: kumarsankalp/catdog:latest|image: ${{ secrets.DOCKERHUB_USERNAME }}/catdog:${{ github.sha }}|g" k8s/deployment.yaml || sed -i "s|image: kumarsankalp/catdog:latest|image: ${{ secrets.DOCKERHUB_USERNAME }}/catdog:${{ github.sha }}|g" k8s/deployment.yaml
+        sed -i '' -e "s|image: kumarsankalp/catdog:latest|image: ${{ secrets.DOCKERHUB_USERNAME }}/catdog:${{ github.sha }}|g" k8s/streamlit-deployment.yaml || sed -i "s|image: kumarsankalp/catdog:latest|image: ${{ secrets.DOCKERHUB_USERNAME }}/catdog:${{ github.sha }}|g" k8s/streamlit-deployment.yaml
         kubectl apply -f k8s/deployment.yaml
         kubectl apply -f k8s/service.yaml
+        kubectl apply -f k8s/streamlit-deployment.yaml
+        kubectl apply -f k8s/streamlit-service.yaml
         kubectl wait --for=condition=available --timeout=120s deployment/mlops-inference
+        kubectl wait --for=condition=available --timeout=120s deployment/streamlit-ui
         
     - name: Run Smoke Test
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       run: |
         export SERVICE_IP=$(minikube ip)
         export SERVICE_PORT=$(kubectl get svc mlops-inference-service -o go-template='{{(index .spec.ports 0).nodePort}}')
         echo "Running smoke tests against http://$SERVICE_IP:$SERVICE_PORT"
-        python smoke_test.py "http://$SERVICE_IP:$SERVICE_PORT"
+        python scripts/smoke_test.py "http://$SERVICE_IP:$SERVICE_PORT"

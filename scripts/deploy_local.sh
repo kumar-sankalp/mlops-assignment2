@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Always execute from the repository root
+cd "$(dirname "$0")/.."
+
 echo "Deploying to local Minikube cluster..."
 
 # Ensure minikube is running
@@ -20,10 +23,18 @@ docker build -t kumarsankalp/catdog:latest .
 echo "Applying Kubernetes manifests..."
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
+kubectl apply -f k8s/streamlit-deployment.yaml
+kubectl apply -f k8s/streamlit-service.yaml
 
 # Wait for rollout
-echo "Waiting for deployment to be ready..."
+echo "Waiting for deployments to be ready..."
 kubectl wait --for=condition=available --timeout=120s deployment/mlops-inference
+kubectl wait --for=condition=available --timeout=120s deployment/streamlit-ui
+
+# Show Streamlit URL
+STREAMLIT_IP=$(minikube ip)
+STREAMLIT_PORT=$(kubectl get svc streamlit-service -o go-template='{{(index .spec.ports 0).nodePort}}')
+echo "🎉 Streamlit UI is available at http://$STREAMLIT_IP:$STREAMLIT_PORT"
 
 # Run smoke test
 SERVICE_IP=$(minikube ip)
@@ -31,4 +42,4 @@ SERVICE_PORT=$(kubectl get svc mlops-inference-service -o go-template='{{(index 
 
 echo "Service is up at http://$SERVICE_IP:$SERVICE_PORT"
 echo "Running smoke tests..."
-python smoke_test.py "http://$SERVICE_IP:$SERVICE_PORT"
+python scripts/smoke_test.py "http://$SERVICE_IP:$SERVICE_PORT"
