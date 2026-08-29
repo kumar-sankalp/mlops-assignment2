@@ -71,7 +71,9 @@ jobs:
         python3 -m venv venv_smoke
         source venv_smoke/bin/activate
         pip install requests pillow
-        export SERVICE_IP=$(minikube ip)
-        export SERVICE_PORT=$(kubectl get svc mlops-inference-service -o go-template='{{(index .spec.ports 0).nodePort}}')
-        echo "Running smoke tests against http://$SERVICE_IP:$SERVICE_PORT"
-        python3 scripts/smoke_test.py "http://$SERVICE_IP:$SERVICE_PORT"
+        # Fix macOS minikube networking issue by using port-forwarding
+        pkill -f "kubectl port-forward svc/mlops-inference-service" || true
+        kubectl port-forward svc/mlops-inference-service 8000:8000 > /dev/null 2>&1 &
+        sleep 3
+        echo "Running smoke tests against http://localhost:8000"
+        python3 scripts/smoke_test.py "http://localhost:8000"
