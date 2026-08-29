@@ -30,6 +30,26 @@ title.alignment = WD_ALIGN_PARAGRAPH.CENTER
 doc.add_paragraph('This document provides an exhaustive, step-by-step technical breakdown of the end-to-end MLOps pipeline implemented for the binary image classification assignment.')
 doc.add_page_break()
 
+# Executive Overview & Findings
+doc.add_heading('Project Overview', level=1)
+doc.add_paragraph('This project implements an end-to-end MLOps pipeline for a binary image classification task (Cats vs Dogs) designed for a pet adoption platform. It covers data acquisition, Exploratory Data Analysis (EDA), model training with MLflow tracking, containerization, and CI/CD into a Kubernetes cluster.')
+
+doc.add_heading('EDA Findings', level=1)
+doc.add_paragraph('The dataset is perfectly balanced (~50% Cats, ~50% Dogs). The images have massive variance in lighting, background, and object scale. Preprocessing required standardized reshaping (224x224), normalization, and data augmentation to prevent overfitting to background noise.')
+
+doc.add_heading('Model Comparison', level=1)
+doc.add_paragraph('1. Baseline Custom CNN: Extremely fast inference (~5ms), tiny model size (<5MB), but lower accuracy (~70%).\n2. ResNet18 (Transfer Learning) (Selected): Vastly superior accuracy (~95%+), slightly slower inference but perfectly acceptable for REST API deployment.')
+
+doc.add_heading('Setup Instructions & Repository', level=1)
+doc.add_paragraph('Repository Link: [ INSERT YOUR REPOSITORY LINK HERE ]\n\nSetup requires a Python environment. Due to macOS vs Linux dependency constraints, two requirements files were utilized: requirements-mac.txt (for local Jupyter training) and requirements.txt (for GitHub CI/CD and Docker builds).')
+
+doc.add_heading('Architecture & Screenshots', level=1)
+doc.add_paragraph('[ INSERT ARCHITECTURE DIAGRAM SCREENSHOT HERE ]')
+doc.add_paragraph('[ INSERT MLFLOW EXPERIMENT & ARTIFACT SCREENSHOTS HERE ]')
+doc.add_paragraph('[ INSERT GITHUB ACTIONS CI/CD SCREENSHOTS HERE ]')
+doc.add_paragraph('[ INSERT STREAMLIT UI & FASTAPI DEPLOYMENT SCREENSHOTS HERE ]')
+doc.add_page_break()
+
 # M1
 doc.add_heading('Module 1: Containerization and API Enhancement', level=1)
 doc.add_paragraph('The foundational step involved exposing the PyTorch ResNet-18 model via a REST API and containerizing it.')
