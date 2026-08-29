@@ -2,99 +2,125 @@ import streamlit as st
 import requests
 from PIL import Image
 import io
+import os
+import time
+import re
 
 # Setup page config
-st.set_page_config(page_title="Cats vs Dogs Classifier", page_icon="🐾", layout="centered")
+st.set_page_config(page_title="MLOps Dashboard", page_icon="🐾", layout="wide")
 
-st.title("🐾 Cats vs Dogs Image Classifier")
-st.write("Upload an image of a cat or a dog, and the model will classify it!")
-
-import os
-
-# Define the API endpoint
 API_URL = os.environ.get("API_URL", "http://localhost:8000")
 
-# Sidebar for Health Check and Smoke Test
-st.sidebar.title("API Operations")
+# Setup Tabs
+tab1, tab2 = st.tabs(["🐾 Inference", "📊 Monitoring Dashboard"])
 
-st.sidebar.subheader("System Health")
-if st.sidebar.button("Check Health"):
-    try:
-        response = requests.get(f"{API_URL}/health")
-        if response.status_code == 200:
-            st.sidebar.success("API is running and healthy!")
-        else:
-            st.sidebar.error(f"API returned status code: {response.status_code}")
-    except requests.exceptions.ConnectionError:
-        st.sidebar.error("Cannot connect to API. Is it running?")
+with tab1:
+    st.title("🐾 Cats vs Dogs Image Classifier")
+    st.write("Upload an image of a cat or a dog, and the model will classify it!")
+    
+    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+    
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
+        st.image(image, caption='Uploaded Image', width=400)
+        
+        if st.button("Classify Image", type="primary"):
+            with st.spinner("Classifying..."):
+                try:
+                    uploaded_file.seek(0)
+                    files = {"file": (uploaded_file.name, uploaded_file.read(), uploaded_file.type)}
+                    response = requests.post(f"{API_URL}/predict", files=files)
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        prediction = result["prediction"]
+                        probability = result["probability"]
+                        st.success("Classification Complete!")
+                        st.markdown(f"### Prediction: **{prediction}**")
+                        confidence = probability if prediction == "Dog" else 1 - probability
+                        st.metric(label="Confidence", value=f"{confidence * 100:.2f}%")
+                    else:
+                        st.error(f"Error from API: {response.text}")
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
 
-st.sidebar.subheader("Automated Smoke Test")
-st.sidebar.write("Simulates end-to-end testing post-deployment.")
-if st.sidebar.button("Run Smoke Test"):
-    st.sidebar.info("Running smoke test...")
+with tab2:
+    st.title("📊 Model Monitoring & Performance Dashboard")
+    st.write("Real-time observability into the MLOps pipeline.")
+    
+    # 1. Prometheus Metrics
+    st.subheader("Live Prometheus Metrics")
+    col1, col2 = st.columns(2)
+    
     try:
-        # 1. Test Health
-        h_resp = requests.get(f"{API_URL}/health")
-        if h_resp.status_code != 200:
-            st.sidebar.error("❌ Health check failed!")
+        metrics_resp = requests.get(f"{API_URL}/metrics")
+        if metrics_resp.status_code == 200:
+            text = metrics_resp.text
+            # Parse total requests
+            req_match = re.search(r'http_requests_total\{.*?\} ([0-9.]+)', text)
+            total_reqs = int(float(req_match.group(1))) if req_match else 0
+            
+            # Parse latency
+            sum_match = re.search(r'http_request_duration_seconds_sum\{.*?\} ([0-9.]+)', text)
+            count_match = re.search(r'http_request_duration_seconds_count\{.*?\} ([0-9.]+)', text)
+            
+            avg_latency = 0
+            if sum_match and count_match:
+                s = float(sum_match.group(1))
+                c = float(count_match.group(1))
+                if c > 0:
+                    avg_latency = (s / c) * 1000 # in ms
+            
+            col1.metric("Total API Requests", total_reqs)
+            col2.metric("Average Latency", f"{avg_latency:.2f} ms")
         else:
-            st.sidebar.success("✅ Health check passed!")
-            
-            # 2. Test Prediction with Dummy Image
-            img = Image.new('RGB', (224, 224), color = 'blue')
-            img_byte_arr = io.BytesIO()
-            img.save(img_byte_arr, format='JPEG')
-            img_byte_arr = img_byte_arr.getvalue()
-            
-            files = {'file': ('dummy.jpg', img_byte_arr, 'image/jpeg')}
-            p_resp = requests.post(f"{API_URL}/predict", files=files)
-            
-            if p_resp.status_code == 200:
-                st.sidebar.success(f"✅ Prediction passed! Result: {p_resp.json()['prediction']}")
-            else:
-                st.sidebar.error(f"❌ Prediction failed! Status: {p_resp.status_code}")
-                
+            st.error("Failed to fetch metrics.")
     except Exception as e:
-        st.sidebar.error(f"❌ Smoke test error: {str(e)}")
-
-# Main upload section
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
-
-if uploaded_file is not None:
-    # Display the uploaded image
-    image = Image.open(uploaded_file)
-    st.image(image, caption='Uploaded Image', use_container_width=True)
+        st.error(f"Could not connect to /metrics: {e}")
+        
+    st.markdown("---")
     
-    st.write("")
+    # 2. Post-Deployment Performance Tracking
+    st.subheader("Post-Deployment Performance Tracker")
+    st.write("Simulates a batch of requests with known labels to calculate live model accuracy.")
     
-    # Add a button to make prediction
-    if st.button("Classify Image", type="primary"):
-        with st.spinner("Classifying..."):
-            try:
-                # Prepare the file for sending via POST
-                # Reset file pointer
-                uploaded_file.seek(0)
-                files = {"file": (uploaded_file.name, uploaded_file.read(), uploaded_file.type)}
+    if st.button("Run Performance Benchmark"):
+        with st.spinner("Processing batch..."):
+            def generate_dummy(color):
+                img = Image.new('RGB', (224, 224), color=color)
+                img_byte_arr = io.BytesIO()
+                img.save(img_byte_arr, format='JPEG')
+                return img_byte_arr.getvalue()
                 
-                # Make the POST request to the prediction endpoint
-                response = requests.post(f"{API_URL}/predict", files=files)
+            simulated_batch = [
+                (generate_dummy('red'), 'Cat'),
+                (generate_dummy('blue'), 'Dog'),
+                (generate_dummy('green'), 'Cat'),
+                (generate_dummy('yellow'), 'Dog'),
+            ]
+            
+            results = []
+            correct_predictions = 0
+            
+            for i, (img_bytes, true_label) in enumerate(simulated_batch):
+                files = {'file': (f'dummy_{i}.jpg', img_bytes, 'image/jpeg')}
+                start_t = time.time()
+                resp = requests.post(f"{API_URL}/predict", files=files)
+                latency = (time.time() - start_t) * 1000
                 
-                if response.status_code == 200:
-                    result = response.json()
-                    prediction = result["prediction"]
-                    probability = result["probability"]
+                if resp.status_code == 200:
+                    pred = resp.json()['prediction']
+                    is_correct = (pred == true_label)
+                    if is_correct: correct_predictions += 1
                     
-                    st.success("Classification Complete!")
-                    st.markdown(f"### Prediction: **{prediction}**")
-                    
-                    # Optional: display confidence metric
-                    confidence = probability if prediction == "Dog" else 1 - probability
-                    st.metric(label="Confidence", value=f"{confidence * 100:.2f}%")
-                    
-                else:
-                    st.error(f"Error from API: {response.text}")
-                    
-            except requests.exceptions.ConnectionError:
-                st.error("Cannot connect to API. Please make sure the backend is running.")
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
+                    results.append({
+                        "Request": f"Image {i+1}",
+                        "True Label": true_label,
+                        "Prediction": pred,
+                        "Correct?": "✅" if is_correct else "❌",
+                        "Latency (ms)": f"{latency:.2f}"
+                    })
+            
+            st.table(results)
+            accuracy = (correct_predictions / len(simulated_batch)) * 100
+            st.metric("Model Accuracy (Batch)", f"{accuracy:.2f}%")
