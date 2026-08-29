@@ -20,7 +20,12 @@ except ImportError:
             x = x.view(-1, 3*224*224)
             return self.fc(x)
 
+from prometheus_fastapi_instrumentator import Instrumentator
+
 app = FastAPI(title="Cats vs Dogs Classification API", version="1.0.0")
+
+# Instrument the app for Prometheus metrics (request count, latency)
+Instrumentator().instrument(app).expose(app)
 
 # Setup model
 device = torch.device('cpu')
@@ -46,6 +51,12 @@ transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
+
+from fastapi.responses import RedirectResponse
+
+@app.get("/")
+def root():
+    return RedirectResponse(url="/docs")
 
 @app.get("/health")
 def health_check():

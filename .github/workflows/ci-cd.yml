@@ -79,4 +79,4 @@ jobs:
         export SERVICE_IP=$(minikube ip)
         export SERVICE_PORT=$(kubectl get svc mlops-inference-service -o go-template='{{(index .spec.ports 0).nodePort}}')
         echo "Running smoke tests against http://$SERVICE_IP:$SERVICE_PORT"
-        python scripts/smoke_test.py "http://$SERVICE_IP:$SERVICE_PORT"
+        python3 scripts/smoke_test.py "http://$SERVICE_IP:$SERVICE_PORT"
