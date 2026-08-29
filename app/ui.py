@@ -56,27 +56,25 @@ with tab2:
         metrics_resp = requests.get(f"{API_URL}/metrics")
         if metrics_resp.status_code == 200:
             text = metrics_resp.text
-            # Parse total requests
-            req_match = re.search(r'http_requests_total\{.*?\} ([0-9.]+)', text)
-            total_reqs = int(float(req_match.group(1))) if req_match else 0
             
-            # Parse latency
-            sum_match = re.search(r'http_request_duration_seconds_sum\{.*?\} ([0-9.]+)', text)
-            count_match = re.search(r'http_request_duration_seconds_count\{.*?\} ([0-9.]+)', text)
+            # Parse total requests (sum across all endpoints)
+            req_matches = re.findall(r'http_requests_total\{.*?\} ([0-9\.eE\+\-]+)', text)
+            total_reqs = int(sum(float(val) for val in req_matches))
             
-            avg_latency = 0
-            if sum_match and count_match:
-                s = float(sum_match.group(1))
-                c = float(count_match.group(1))
-                if c > 0:
-                    avg_latency = (s / c) * 1000 # in ms
+            # Parse latency (sum across all endpoints)
+            sum_matches = re.findall(r'http_request_duration_seconds_sum\{.*?\} ([0-9\.eE\+\-]+)', text)
+            count_matches = re.findall(r'http_request_duration_seconds_count\{.*?\} ([0-9\.eE\+\-]+)', text)
+            
+            total_sum = sum(float(val) for val in sum_matches)
+            total_count = sum(float(val) for val in count_matches)
+            avg_latency = (total_sum / total_count * 1000) if total_count > 0 else 0
             
             # Parse memory usage
-            mem_match = re.search(r'process_resident_memory_bytes ([0-9.]+)', text)
+            mem_match = re.search(r'process_resident_memory_bytes ([0-9\.eE\+\-]+)', text)
             mem_mb = (float(mem_match.group(1)) / (1024 * 1024)) if mem_match else 0
             
             # Parse uptime
-            start_match = re.search(r'process_start_time_seconds ([0-9.]+)', text)
+            start_match = re.search(r'process_start_time_seconds ([0-9\.eE\+\-]+)', text)
             uptime_s = (time.time() - float(start_match.group(1))) if start_match else 0
             
             col1.metric("Total API Requests", total_reqs)
