@@ -50,7 +50,7 @@ with tab2:
     
     # 1. Prometheus Metrics
     st.subheader("Live Prometheus Metrics")
-    col1, col2 = st.columns(2)
+    col1, col2, col3, col4 = st.columns(4)
     
     try:
         metrics_resp = requests.get(f"{API_URL}/metrics")
@@ -71,8 +71,24 @@ with tab2:
                 if c > 0:
                     avg_latency = (s / c) * 1000 # in ms
             
+            # Parse memory usage
+            mem_match = re.search(r'process_resident_memory_bytes ([0-9.]+)', text)
+            mem_mb = (float(mem_match.group(1)) / (1024 * 1024)) if mem_match else 0
+            
+            # Parse uptime
+            start_match = re.search(r'process_start_time_seconds ([0-9.]+)', text)
+            uptime_s = (time.time() - float(start_match.group(1))) if start_match else 0
+            
             col1.metric("Total API Requests", total_reqs)
             col2.metric("Average Latency", f"{avg_latency:.2f} ms")
+            col3.metric("Memory Usage", f"{mem_mb:.2f} MB")
+            
+            # Format uptime nicely
+            mins, secs = divmod(int(uptime_s), 60)
+            hours, mins = divmod(mins, 60)
+            uptime_str = f"{hours}h {mins}m {secs}s" if hours > 0 else f"{mins}m {secs}s"
+            col4.metric("API Uptime", uptime_str)
+            
         else:
             st.error("Failed to fetch metrics.")
     except Exception as e:
