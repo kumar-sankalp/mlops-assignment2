@@ -28,6 +28,11 @@ doc = Document()
 title = doc.add_heading('MLOps Assignment 2: Comprehensive Technical Report', 0)
 title.alignment = WD_ALIGN_PARAGRAPH.CENTER
 doc.add_paragraph('This document provides an exhaustive, step-by-step technical breakdown of the end-to-end MLOps pipeline implemented for the binary image classification assignment.')
+
+# Video Presentation
+doc.add_heading('Video Presentation', level=1)
+p = doc.add_paragraph('Watch the complete project demonstration here: ')
+p.add_run('https://drive.google.com/drive/folders/1ZgW3GZscfUzRShQ7NYZ1Ruv_wSnAElDe?usp=drive_link')
 doc.add_page_break()
 
 # Executive Overview & Findings

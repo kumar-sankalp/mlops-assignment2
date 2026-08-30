@@ -1,5 +1,8 @@
 # 🐾 MLOps Pipeline: Cats vs Dogs Classification
 
+## 🎥 Video Presentation
+**Watch the complete project demonstration here:** [Video Link](https://drive.google.com/drive/folders/1ZgW3GZscfUzRShQ7NYZ1Ruv_wSnAElDe?usp=drive_link)
+
 ## 📖 Project Overview
 This project implements an end-to-end MLOps pipeline for a binary image classification task (Cats vs Dogs) designed for a pet adoption platform. 
 The goal of this project is to demonstrate a production-ready Machine Learning lifecycle. It covers data acquisition, Exploratory Data Analysis (EDA), model training with experiment tracking, automated testing, containerized packaging, and continuous integration/continuous deployment (CI/CD) into a Kubernetes cluster.
